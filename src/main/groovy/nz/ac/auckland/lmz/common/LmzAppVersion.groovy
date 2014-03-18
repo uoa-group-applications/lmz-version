@@ -1,9 +1,12 @@
 package nz.ac.auckland.lmz.common
 
 import com.bluetrainsoftware.classpathscanner.ClasspathScanner
+import groovy.transform.CompileStatic
+import net.stickycode.configuration.ConfigurationNotFoundException
 import net.stickycode.stereotype.configured.Configured;
 import net.stickycode.stereotype.configured.PostConfigured;
-import nz.ac.auckland.common.config.ConfigKey;
+import nz.ac.auckland.common.config.ConfigKey
+import nz.ac.auckland.common.config.JarManifestConfigurationSource;
 import nz.ac.auckland.common.stereotypes.UniversityComponent
 import nz.ac.auckland.lmz.flags.Flags
 import org.slf4j.Logger
@@ -12,10 +15,13 @@ import org.w3c.dom.Document;
 import org.w3c.dom.Element;
 import org.w3c.dom.Node;
 import org.w3c.dom.NodeList;
-import org.xml.sax.SAXException;
+import org.xml.sax.SAXException
 
+import javax.inject.Inject;
 import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
+import javax.xml.parsers.ParserConfigurationException
+import java.util.jar.Attributes
+import java.util.jar.Manifest;
 
 /**
  * Central place to hold and find the version of the application that is running. This comes from the manifest file,
@@ -24,22 +30,20 @@ import javax.xml.parsers.ParserConfigurationException;
  * @author: Richard Vowles - https://plus.google.com/+RichardVowles
  */
 @UniversityComponent
+@CompileStatic
 public class LmzAppVersion implements AppVersion {
 	private static Logger log = LoggerFactory.getLogger(LmzAppVersion.class)
+
+	public static final String KEY_IMPLEMENTATION_VERSION = "Implementation-Version";
 
 	/**
 	 * @see nz.ac.auckland.common.config.JarManifestConfigurationSource#KEY_IMPLEMENTATION_VERSION
 	 */
 	public static final String DEFAULT = "unknown"
 
-	@ConfigKey("Implementation-Version")
 	protected String version = DEFAULT;
 
 	private boolean initialized = false;
-
-	@Configured
-	// force @postconfigured
-	String meh = "meh.";
 
 	public static final Map<String, GroupArtifactVersion> classpathGavs = new HashMap<>();
 
@@ -109,6 +113,10 @@ public class LmzAppVersion implements AppVersion {
 		return gav.version
 	}
 
+	protected String getManifestVersion() {
+		return System.getProperty("Bathe-Implementation-Version")?.toString();
+	}
+
 	@PostConfigured
 	public void configured() {
 		if (initialized) {
@@ -116,13 +124,18 @@ public class LmzAppVersion implements AppVersion {
 		}
 
 		initialized = true;
+		version = getManifestVersion();
 
-		if (DEFAULT.equals(version) && Flags.DEVMODE.on()) {
+		if (version == null && Flags.DEVMODE.on()) {
 			File basePath = ClasspathScanner.findTestClassesBasePath();
 
 			if (basePath) {
 				version = parseGAVfromPOM(basePath)
 			}
+		}
+
+		if (version == null) {
+			throw new RuntimeException("Unable to detect the version of the running application, all server side APIs will be unreliable, failing.")
 		}
 
 		if (version.endsWith('-SNAPSHOT')) {

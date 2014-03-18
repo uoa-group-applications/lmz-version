@@ -15,10 +15,21 @@ class AppVersionTests {
 		cs.scan(getClass().getClassLoader())
 
 		LmzAppVersion v = new LmzAppVersion()
+
+		try {
+			v.configured()
+			assert false, "this should fail ${v.version}"
+		} catch (RuntimeException ex) {
+
+		}
+
+		System.setProperty("Bathe-Implementation-Version", "1.17")
+
+		v = new LmzAppVersion()
 		v.configured()
-		println v.version
-		assert v.version
-		assert v.version == LmzAppVersion.DEFAULT
+		assert v.version == "1.17"
+
+		System.clearProperty("Bathe-Implementation-Version")
 
 		// should not be default, should pick up GAV of this project
 		Flags.DEVMODE.turnOn()
@@ -28,5 +39,7 @@ class AppVersionTests {
 		assert v.version
 		assert v.version != LmzAppVersion.DEFAULT
 		assert !v.version.contains('-SNAPSHOT')
+
+
 	}
 }
